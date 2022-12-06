@@ -41,7 +41,8 @@ int main() {
 
 bool if_digit(const std::string &s) {
     int len = s.length();
-    for (int i = 0; i < len; i++) {
+    if ((s[0] < '0' or s[0] > '9') and s[0]!='-') return false;
+    for (int i = 1; i < len; i++) {
         if (s[i] < '0' or s[i] > '9') return false;
     }
     return true;
@@ -70,18 +71,17 @@ void processLine(std::string line, Program &program, EvalState &state) {
 //    int value = exp->eval(state);
 //    std::cout << value << std::endl;
 //    delete exp;
+//    exit(0);
     std::string begin = scanner.nextToken();
     TokenType type = scanner.getTokenType(begin);
     if (type != NUMBER) {
         if (!scanner.hasMoreTokens()) {
             if (begin == "RUN") {
                 program.start(state);
-                return;
             } else if (begin == "LIST") {
                 for (auto iter = program.order.begin(); iter != program.order.end(); iter++) {
                     std::cout << program.lines[*iter] << '\n';
                 }
-                return;
             } else if (begin == "CLEAR") {
                 program.clear();
                 state.Clear();
@@ -91,35 +91,58 @@ void processLine(std::string line, Program &program, EvalState &state) {
                 exit(0);
             } else if (begin == "HELP") {
                 std::cout << "This is a Minimal BASIC Interpreter." << std::endl;
-                return;
             } else error("SYNTAX ERROR");
         }
         if (begin == "LET") {
-            Expression *exp = parseExp(scanner);
-            int value = exp->eval(state);
-            delete exp;
-        }
-        if (begin == "PRINT") {
-            Expression *exp = parseExp(scanner);
-            std::cout << exp->eval(state) << '\n';
-            delete exp;
-        }
-        if (begin == "INPUT") {
-            Expression *exp = parseExp(scanner);
-            std::cout << '?';
-            std::string input;
-            getline(std::cin, input);
-            while (!if_digit(input)) {
-                std::cout << "INVALID NUMBER\n";
-                std::cout << '?';
-                getline(std::cin, input);
+            Expression *exp;
+            try {
+                exp = parseExp(scanner);
+                int value = exp->eval(state);
+                delete exp;
+            } catch (ErrorException &ex) {
+                delete exp;
+                std::cout << ex.getMessage() << std::endl;
             }
-            int value = stringToInteger(input);
-            state.setValue(((IdentifierExp *) exp)->getName(), value);
-            delete exp;
+        } else if (begin == "PRINT") {
+            Expression *exp;
+            try {
+                exp = parseExp(scanner);
+                std::cout << exp->eval(state) << '\n';
+                delete exp;
+            } catch (ErrorException &ex) {
+                delete exp;
+                std::cout << ex.getMessage() << std::endl;
+            }
+        } else if (begin == "INPUT") {
+            Expression *exp = parseExp(scanner);;
+            while (true) {
+                try {
+                    std::cout << " ? ";
+                    std::string input;
+                    getline(std::cin, input);
+                    if (!if_digit(input)) error("INVALID NUMBER");
+                    int value = stringToInteger(input);
+                     state.setValue(((IdentifierExp *) exp)->getName(), value);
+                    delete exp;
+                    break;
+                } catch (ErrorException &ex) {
+                    std::cout << ex.getMessage() << std::endl;
+                }
+            }
+//            std::cout << '?';
+//            std::string input;
+//            getline(std::cin, input);
+//            while (!if_digit(input)) {
+//                std::cout << "INVALID NUMBER\n";
+//                std::cout << '?';
+//                getline(std::cin, input);
+//            }
+//            int value = stringToInteger(input);
+//            state.setValue(((IdentifierExp *) exp)->getName(), value);
+//            delete exp;
+
         }
-    }
-    if (type == NUMBER) {
+    } else {
         int line_num = stringToInteger(begin);
         if (!scanner.hasMoreTokens()) {
             program.removeSourceLine(line_num);

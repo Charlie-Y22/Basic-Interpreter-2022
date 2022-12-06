@@ -11,7 +11,8 @@
 
 bool if_digit_(const std::string &s) {
     int len = s.length();
-    for (int i = 0; i < len; i++) {
+    if ((s[0] < '0' or s[0] > '9') and s[0]!='-') return false;
+    for (int i = 1; i < len; i++) {
         if (s[i] < '0' or s[i] > '9') return false;
     }
     return true;
@@ -29,7 +30,11 @@ Statement::~Statement() = default;
 void Statement::execute(EvalState &state, Program &program) {}
 
 Assignment::Assignment(TokenScanner &scanner) {
-    exp = parseExp(scanner);
+    try {
+        exp = parseExp(scanner);
+    } catch (ErrorException &ex) {
+        std::cout << ex.getMessage() << std::endl;
+    }
 }
 
 Assignment::~Assignment() {
@@ -37,11 +42,19 @@ Assignment::~Assignment() {
 }
 
 void Assignment::execute(EvalState &state, Program &program) {
-    int value = exp->eval(state);
+    try {
+        int value = exp->eval(state);
+    } catch (ErrorException &ex) {
+        std::cout << ex.getMessage() << std::endl;
+    }
 }
 
 Print::Print(TokenScanner &scanner) {
-    exp = parseExp(scanner);
+    try {
+        exp = parseExp(scanner);
+    } catch (ErrorException &ex) {
+        std::cout << ex.getMessage() << std::endl;
+    }
 }
 
 Print::~Print() {
@@ -49,7 +62,11 @@ Print::~Print() {
 }
 
 void Print::execute(EvalState &state, Program &program) {
-    std::cout << exp->eval(state) << '\n';
+    try {
+        std::cout << exp->eval(state) << '\n';
+    } catch (ErrorException &ex) {
+        std::cout << ex.getMessage() << std::endl;
+    }
 }
 
 Input::Input(TokenScanner &scanner) {
@@ -61,16 +78,19 @@ Input::~Input() {
 }
 
 void Input::execute(EvalState &state, Program &program) {
-    std::cout << '?';
-    std::string input;
-    getline(std::cin, input);
-    while (!if_digit_(input)) {
-        std::cout << "INVALID NUMBER\n";
-        std::cout << '?';
-        getline(std::cin, input);
+    while (true) {
+        try {
+            std::cout << " ? ";
+            std::string input;
+            getline(std::cin, input);
+            if (!if_digit_(input)) error("INVALID NUMBER");
+            int value = stringToInteger(input);
+            state.setValue(((IdentifierExp *) exp)->getName(), value);
+            break;
+        } catch (ErrorException &ex) {
+            std::cout << ex.getMessage() << std::endl;
+        }
     }
-    int value = stringToInteger(input);
-    state.setValue(((IdentifierExp *) exp)->getName(), value);
 }
 
 Goto::Goto(int line_number) : line_num(line_number) {}
@@ -87,30 +107,38 @@ If_then::If_then(TokenScanner &scanner) {
     r.ignoreWhitespace();
     r.scanNumbers();
     std::string token = scanner.nextToken();
+    std::string l_,r_;
     while (token != "<" && token != ">" && token != "=") {
-        l.saveToken(token);
+        l_+=token+" ";
         token = scanner.nextToken();
     }
     op = token;
     token = scanner.nextToken();
     while (token != "THEN") {
-        r.saveToken(token);
+        r_+=token+" ";
         token = scanner.nextToken();
     }
     std::string line_number = scanner.nextToken();
     if (scanner.hasMoreTokens()) error("SYNTAX ERROR");
     line_num = stringToInteger(line_number);
+    l.setInput(l_);
+    r.setInput(r_);
+    lhs = parseExp(l);
+    rhs = parseExp(r);
 }
 
-If_then::~If_then()=default;
+If_then::~If_then() { 
+    delete lhs;
+    delete rhs;
+}
 
 void If_then::execute(EvalState &state, Program &program) {
     if (op == "<") {
-        if ((parseExp(l)->eval(state)) >= (parseExp(r)->eval(state))) return;
+        if ((lhs->eval(state)) < (rhs->eval(state))) program.start_line = line_num;
     } else if (op == ">") {
-        if ((parseExp(l)->eval(state)) <= (parseExp(r)->eval(state))) return;
+        if ((lhs->eval(state)) > (rhs->eval(state))) program.start_line = line_num;
     } else if (op == "=") {
-        if ((parseExp(l)->eval(state)) != (parseExp(r)->eval(state))) return;
+        if ((lhs->eval(state)) == (rhs->eval(state))) program.start_line = line_num;
     }
-    program.start_line = line_num;
+
 }

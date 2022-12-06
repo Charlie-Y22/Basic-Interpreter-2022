@@ -144,8 +144,8 @@ public:
 private:
     TokenScanner l;
     TokenScanner r;
-//    Expression *lhs;
-//    Expression *rhs;
+    Expression *lhs;
+    Expression *rhs;
     std::string op;
     int line_num;
 };

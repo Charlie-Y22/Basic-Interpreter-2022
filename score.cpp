@@ -9,6 +9,7 @@ const string defaultStudentBasic = "./cmake-build-debug/code";
 const string defaultStanderBasic = "./Basic-Demo-64bit";
 
 const int traceCount = 100;
+
 const string traces[traceCount] = {
         "trace00.txt", "trace01.txt", "trace02.txt", "trace03.txt", "trace04.txt", "trace05.txt", "trace06.txt", "trace07.txt", "trace08.txt", "trace09.txt",
         "trace10.txt", "trace11.txt", "trace12.txt", "trace13.txt", "trace14.txt", "trace15.txt", "trace16.txt", "trace17.txt", "trace18.txt", "trace19.txt",

@@ -99,33 +99,54 @@ void Program::start(EvalState &state) {
         scanner.ignoreWhitespace();
         scanner.scanNumbers();
         scanner.setInput(lines[start_line]);
-        start_line = getNextLineNumber(start_line);
         std::string instruction = scanner.nextToken();
         instruction = scanner.nextToken();
-        if (instruction == "LET") {
+        if (instruction == "REM") {
+            start_line = getNextLineNumber(start_line);
+        } else if (instruction == "END") {
+            start_line=-1;
+        } else if (instruction == "LET") {
             Statement *stat = new Assignment(scanner);
             stat->execute(state, *this);
-            setParsedStatement(start_line,stat);
+            setParsedStatement(start_line, stat);
+            start_line = getNextLineNumber(start_line);
         } else if (instruction == "PRINT") {
             Statement *stat = new Print(scanner);
             stat->execute(state, *this);
-            setParsedStatement(start_line,stat);
+            setParsedStatement(start_line, stat);
+            start_line = getNextLineNumber(start_line);
         } else if (instruction == "INPUT") {
             Statement *stat = new Input(scanner);
             stat->execute(state, *this);
-            setParsedStatement(start_line,stat);
+            setParsedStatement(start_line, stat);
+            start_line = getNextLineNumber(start_line);
         } else if (instruction == "GOTO") {
             std::string line_ = scanner.nextToken();
             int tmp = start_line;
             int next_line = stringToInteger(line_);
             Statement *stat = new Goto(next_line);
             stat->execute(state, *this);
-            setParsedStatement(tmp,stat);
+            try {
+                if (!lines.count(start_line)) error("LINE NUMBER ERROR");
+                setParsedStatement(tmp, stat);
+            } catch (ErrorException &ex) {
+                start_line = -1;
+                delete stat;
+                std::cout << ex.getMessage() << std::endl;
+            }
         } else if (instruction == "IF") {
             int tmp = start_line;
             Statement *stat = new If_then(scanner);
+            start_line = getNextLineNumber(start_line);
             stat->execute(state, *this);
-            setParsedStatement(tmp,stat);
+            try {
+                if (!lines.count(start_line)) error("LINE NUMBER ERROR");
+                setParsedStatement(tmp, stat);
+            } catch (ErrorException &ex) {
+                start_line = -1;
+                delete stat;
+                std::cout << ex.getMessage() << std::endl;
+            }
         }
     }
 }
